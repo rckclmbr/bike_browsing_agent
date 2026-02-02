@@ -102,6 +102,11 @@ async def click(selector: str) -> dict:
 def _run_gh(args: list[str]) -> dict:
     """Run a gh CLI command and return parsed JSON."""
     try:
+        # Use GITHUB_REPO from env if set
+        repo = os.environ.get("GITHUB_REPO", "")
+        if repo and "--repo" not in args:
+            args = ["--repo", repo] + args
+
         result = subprocess.run(
             ["gh"] + args,
             capture_output=True,
@@ -148,7 +153,10 @@ def get_issue(number: int) -> dict:
 @mcp.tool()
 def create_issue(title: str, body: str, labels: str = "") -> dict:
     """Create a GitHub issue. Labels: comma-separated (e.g., 'enhancement,priority')."""
-    args = ["issue", "create", "--title", title, "--body", body]
+    repo = os.environ.get("GITHUB_REPO", "")
+    args = ["gh", "issue", "create", "--title", title, "--body", body]
+    if repo:
+        args.extend(["--repo", repo])
     if labels:
         for label in labels.split(","):
             args.extend(["--label", label.strip()])
