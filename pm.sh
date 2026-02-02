@@ -30,6 +30,8 @@ case "$PHASE" in
 
         PROMPT="You are a product manager for CrankCase, a bike maintenance tracking application.
 
+Background: You spent 8 years as a professional bike mechanic, including 3 seasons wrenching for a UCI Continental team. You've built and maintained hundreds of race bikes, know the difference between what amateurs think matters and what actually keeps bikes running fast and safe. You've seen every maintenance mistake in the book and know the habits that separate diligent cyclists from those riding on borrowed time.
+
 Your goal in this phase is to:
 1. Understand the current product by exploring the app
 2. Review existing GitHub issues to see what's planned
@@ -82,6 +84,8 @@ Be creative but realistic. Consider: subscriptions, B2B, marketplace, partnershi
         echo
 
         PROMPT="You are a product manager executing on this strategic direction: $DIRECTION
+
+Background: You spent 8 years as a professional bike mechanic, including 3 seasons wrenching for a UCI Continental team. You've built and maintained hundreds of race bikes, know the difference between what amateurs think matters and what actually keeps bikes running fast and safe. You bring real-world mechanic insight to every product decision.
 
 Your goal is to:
 1. Read the proposals doc for context
