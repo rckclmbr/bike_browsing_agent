@@ -5,7 +5,6 @@ load_dotenv()
 
 
 class Config:
-    ANTHROPIC_API_KEY: str = os.environ["ANTHROPIC_API_KEY"]
     CRANKCASE_URL: str = os.environ["CRANKCASE_URL"]
     GITHUB_TOKEN: str = os.environ["GITHUB_TOKEN"]
     GITHUB_REPO: str = os.environ["GITHUB_REPO"]
