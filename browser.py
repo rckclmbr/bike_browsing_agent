@@ -2,7 +2,7 @@ import time
 from urllib.parse import urlparse
 
 import jwt
-from playwright.sync_api import sync_playwright, Page, Browser
+from playwright.async_api import async_playwright, Page, Browser
 
 from config import config
 
@@ -14,59 +14,59 @@ class BrowserController:
         self.browser: Browser | None = None
         self.page: Page | None = None
 
-    def start(self):
-        self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(headless=self.headless)
-        self.page = self.browser.new_page()
+    async def start(self):
+        self.playwright = await async_playwright().start()
+        self.browser = await self.playwright.chromium.launch(headless=self.headless)
+        self.page = await self.browser.new_page()
         self.page.set_default_timeout(config.ACTION_TIMEOUT)
 
-    def stop(self):
+    async def stop(self):
         if self.browser:
-            self.browser.close()
+            await self.browser.close()
         if self.playwright:
-            self.playwright.stop()
+            await self.playwright.stop()
 
-    def navigate(self, url: str) -> dict:
-        self.page.goto(url)
+    async def navigate(self, url: str) -> dict:
+        await self.page.goto(url)
         return {"status": "ok", "url": self.page.url}
 
-    def click(self, selector: str) -> dict:
+    async def click(self, selector: str) -> dict:
         try:
-            self.page.click(selector, timeout=config.ACTION_TIMEOUT)
-            self.page.wait_for_load_state("networkidle", timeout=5000)
+            await self.page.click(selector, timeout=config.ACTION_TIMEOUT)
+            await self.page.wait_for_load_state("networkidle", timeout=5000)
             return {"status": "ok"}
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def fill(self, selector: str, text: str) -> dict:
+    async def fill(self, selector: str, text: str) -> dict:
         try:
-            self.page.fill(selector, text)
+            await self.page.fill(selector, text)
             return {"status": "ok"}
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def select(self, selector: str, value: str) -> dict:
+    async def select(self, selector: str, value: str) -> dict:
         try:
-            self.page.select_option(selector, value)
+            await self.page.select_option(selector, value)
             return {"status": "ok"}
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def screenshot(self, path: str = "screenshot.png") -> dict:
-        self.page.screenshot(path=path)
+    async def screenshot(self, path: str = "screenshot.png") -> dict:
+        await self.page.screenshot(path=path)
         return {"status": "ok", "path": path}
 
-    def get_page_state(self) -> dict:
+    async def get_page_state(self) -> dict:
         url = self.page.url
-        title = self.page.title()
-        html = self._get_simplified_html()
+        title = await self.page.title()
+        html = await self._get_simplified_html()
         return {
             "url": url,
             "title": title,
             "html": html,
         }
 
-    def _get_simplified_html(self) -> str:
+    async def _get_simplified_html(self) -> str:
         """Extract simplified HTML with interactive elements and text."""
         script = """
         () => {
@@ -94,9 +94,9 @@ class BrowserController:
             return elements.join('\\n');
         }
         """
-        return self.page.evaluate(script)
+        return await self.page.evaluate(script)
 
-    def login(self) -> dict:
+    async def login(self) -> dict:
         """Log in by injecting a pre-authenticated JWT session cookie.
 
         The site uses Strava OAuth which blocks headless browsers, so we bypass
@@ -104,8 +104,8 @@ class BrowserController:
         """
         try:
             # Navigate to the site first
-            self.navigate(config.CRANKCASE_URL)
-            self.page.wait_for_load_state("networkidle")
+            await self.navigate(config.CRANKCASE_URL)
+            await self.page.wait_for_load_state("networkidle")
 
             # Generate JWT token
             payload = {
@@ -121,7 +121,7 @@ class BrowserController:
             domain = parsed.netloc
 
             # Inject session cookie
-            self.page.context.add_cookies([{
+            await self.page.context.add_cookies([{
                 "name": "session",
                 "value": token,
                 "domain": domain,
@@ -132,11 +132,11 @@ class BrowserController:
             }])
 
             # Reload to apply the cookie
-            self.page.reload()
-            self.page.wait_for_load_state("networkidle")
+            await self.page.reload()
+            await self.page.wait_for_load_state("networkidle")
 
             # Verify authentication by checking for user name or logout button
-            html = self.page.content()
+            html = await self.page.content()
             if config.SESSION_USER_NAME in html or "logout" in html.lower():
                 return {"status": "ok", "url": self.page.url, "user": config.SESSION_USER_NAME}
             else:

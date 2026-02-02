@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """MCP server exposing browser and GitHub tools to Claude CLI."""
 
+import asyncio
 import os
 import atexit
 from mcp.server.fastmcp import FastMCP
@@ -21,7 +22,14 @@ def cleanup():
     """Ensure browser is closed on exit."""
     global browser
     if browser:
-        browser.stop()
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(browser.stop())
+            else:
+                loop.run_until_complete(browser.stop())
+        except Exception:
+            pass  # Best effort cleanup
         browser = None
 
 
@@ -29,7 +37,7 @@ atexit.register(cleanup)
 
 
 @mcp.tool()
-def start_browser(headless: bool = False) -> str:
+async def start_browser(headless: bool = False) -> str:
     """Start the browser and log in to the application. Call this first before any other browser tools."""
     global browser, reporter
 
@@ -37,8 +45,8 @@ def start_browser(headless: bool = False) -> str:
         return "Browser already running"
 
     browser = BrowserController(headless=headless)
-    browser.start()
-    result = browser.login()
+    await browser.start()
+    result = await browser.login()
     reporter = GitHubReporter()
 
     status = result.get("status", "unknown")
@@ -49,60 +57,60 @@ def start_browser(headless: bool = False) -> str:
 
 
 @mcp.tool()
-def stop_browser() -> str:
+async def stop_browser() -> str:
     """Close the browser when done testing. Call this when finished."""
     global browser
 
     if not browser:
         return "Browser not running"
 
-    browser.stop()
+    await browser.stop()
     browser = None
     return "Browser closed"
 
 
 @mcp.tool()
-def get_page_state() -> dict:
+async def get_page_state() -> dict:
     """Get the current page URL, title, and simplified HTML showing interactive elements."""
     if not browser:
         return {"error": "Browser not started. Call start_browser first."}
-    return browser.get_page_state()
+    return await browser.get_page_state()
 
 
 @mcp.tool()
-def navigate(url: str) -> dict:
+async def navigate(url: str) -> dict:
     """Navigate to a URL."""
     if not browser:
         return {"error": "Browser not started. Call start_browser first."}
-    return browser.navigate(url)
+    return await browser.navigate(url)
 
 
 @mcp.tool()
-def click(selector: str) -> dict:
+async def click(selector: str) -> dict:
     """Click on an element using a CSS selector."""
     if not browser:
         return {"error": "Browser not started. Call start_browser first."}
-    return browser.click(selector)
+    return await browser.click(selector)
 
 
 @mcp.tool()
-def fill(selector: str, text: str) -> dict:
+async def fill(selector: str, text: str) -> dict:
     """Fill a text input field with the given text."""
     if not browser:
         return {"error": "Browser not started. Call start_browser first."}
-    return browser.fill(selector, text)
+    return await browser.fill(selector, text)
 
 
 @mcp.tool()
-def select(selector: str, value: str) -> dict:
+async def select(selector: str, value: str) -> dict:
     """Select an option from a dropdown by value."""
     if not browser:
         return {"error": "Browser not started. Call start_browser first."}
-    return browser.select(selector, value)
+    return await browser.select(selector, value)
 
 
 @mcp.tool()
-def screenshot() -> dict:
+async def screenshot() -> dict:
     """Take a screenshot of the current page. Use sparingly - only when you suspect a visual bug."""
     if not browser:
         return {"error": "Browser not started. Call start_browser first."}
@@ -114,7 +122,7 @@ def screenshot() -> dict:
     num = len(existing) + 1
     path = f"screenshots/screenshot_{num}.png"
 
-    result = browser.screenshot(path)
+    result = await browser.screenshot(path)
     result["note"] = "Screenshot saved. Describe what you expected to see vs what appears."
     return result
 

@@ -58,7 +58,6 @@ echo "Dry run: $DRY_RUN"
 echo "=================================="
 echo
 
-claude --mcp ./browser_mcp.py \
-       --max-turns "$MAX_TURNS" \
-       --print \
+claude --print \
+       --dangerously-skip-permissions \
        -p "$PROMPT"
