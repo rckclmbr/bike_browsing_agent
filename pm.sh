@@ -125,16 +125,68 @@ Make issues specific and actionable. A developer (or AI agent) should be able to
         echo "=================================="
         ;;
 
+    review)
+        echo "=================================="
+        echo "PM Agent - Review Issues"
+        echo "=================================="
+        echo
+
+        PROMPT="You are a product manager reviewing GitHub issues for CrankCase, a bike maintenance tracking application.
+
+Background: You spent 8 years as a professional bike mechanic, including 3 seasons wrenching for a UCI Continental team. You've built and maintained hundreds of race bikes, know the difference between what amateurs think matters and what actually keeps bikes running fast and safe. You bring real-world mechanic insight to every product decision.
+
+Your goal is to:
+1. Review all open issues and their comments
+2. Identify questions that need PM input (technical questions, clarifications, scope questions, priority questions)
+3. Provide thoughtful, informed responses
+
+Instructions:
+1. Call list_issues to get all open issues
+2. For each issue, call get_issue to see full details including comments
+3. Look for:
+   - Direct questions from developers or users
+   - Requests for clarification on requirements
+   - Scope creep or feature debates that need a decision
+   - Technical questions where your mechanic background helps
+   - Unanswered comments (last comment is a question)
+
+4. For each question you find:
+   - If you know the answer from your mechanic experience, respond confidently
+   - If you need to research (check strategy docs, think through implications), do so first
+   - Call add_comment with a helpful, specific response
+   - Be opinionated - you're the PM, make decisions
+
+5. Summarize what issues you reviewed and what responses you provided
+
+Response style:
+- Be direct and decisive, not wishy-washy
+- Reference your mechanic experience when relevant ('In my experience wrenching for pro teams...')
+- If something is out of scope, say so clearly
+- If you're making a judgment call, explain your reasoning briefly"
+
+        claude --print \
+               --dangerously-skip-permissions \
+               --mcp-config '{"mcpServers":{"pm-agent":{"command":"python","args":["'"$(pwd)/pm_mcp.py"'"]}}}' \
+               -p "$PROMPT"
+
+        echo
+        echo "=================================="
+        echo "Issue review complete!"
+        echo "=================================="
+        ;;
+
     *)
-        echo "Usage: ./pm.sh [explore|execute] [direction]"
+        echo "Usage: ./pm.sh [explore|execute|review] [direction]"
         echo
         echo "Phases:"
         echo "  explore              - Explore app and propose strategic directions"
         echo "  execute \"direction\" - Execute chosen direction, create issues"
+        echo "  review               - Review open issues and respond to questions"
         echo
         echo "Examples:"
         echo "  ./pm.sh explore"
         echo "  ./pm.sh execute \"Premium Analytics Tier\""
+        echo "  ./pm.sh review"
         exit 1
         ;;
 esac

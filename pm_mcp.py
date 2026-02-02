@@ -151,6 +151,21 @@ def get_issue(number: int) -> dict:
 
 
 @mcp.tool()
+def add_comment(issue_number: int, body: str) -> dict:
+    """Add a comment to a GitHub issue."""
+    repo = os.environ.get("GITHUB_REPO", "")
+    args = ["gh", "issue", "comment", str(issue_number), "--body", body]
+    if repo:
+        args.extend(["--repo", repo])
+
+    result = subprocess.run(args, capture_output=True, text=True, timeout=30)
+    if result.returncode != 0:
+        return {"error": result.stderr.strip()}
+
+    return {"status": "ok", "issue": issue_number}
+
+
+@mcp.tool()
 def create_issue(title: str, body: str, labels: str = "") -> dict:
     """Create a GitHub issue. Labels: comma-separated (e.g., 'enhancement,priority')."""
     repo = os.environ.get("GITHUB_REPO", "")
