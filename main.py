@@ -34,7 +34,7 @@ def main():
         browser.start()
 
         print("Logging in...")
-        login_result = browser.login(config.CRANKCASE_USERNAME, config.CRANKCASE_PASSWORD)
+        login_result = browser.login()
         if login_result["status"] == "error":
             print(f"Login failed: {login_result['message']}")
             print("Continuing anyway - site may not require login")

@@ -1,6 +1,10 @@
+import time
+from urllib.parse import urlparse
+
+import jwt
 from playwright.sync_api import sync_playwright, Page, Browser
+
 from config import config
-import re
 
 
 class BrowserController:
@@ -92,27 +96,51 @@ class BrowserController:
         """
         return self.page.evaluate(script)
 
-    def login(self, username: str, password: str) -> dict:
-        """Attempt to log in - this is site-specific and may need adjustment."""
+    def login(self) -> dict:
+        """Log in by injecting a pre-authenticated JWT session cookie.
+
+        The site uses Strava OAuth which blocks headless browsers, so we bypass
+        by generating a valid JWT session cookie using credentials from config.
+        """
         try:
             # Navigate to the site first
             self.navigate(config.CRANKCASE_URL)
-
-            # Look for common login patterns
-            # This may need customization based on CrankCase's actual login flow
             self.page.wait_for_load_state("networkidle")
 
-            # Try to find and fill login form
-            if self.page.locator('input[type="email"], input[name="email"]').count() > 0:
-                self.page.fill('input[type="email"], input[name="email"]', username)
-            if self.page.locator('input[type="password"]').count() > 0:
-                self.page.fill('input[type="password"]', password)
+            # Generate JWT token
+            payload = {
+                "sub": config.SESSION_USER_ID,
+                "name": config.SESSION_USER_NAME,
+                "exp": int(time.time()) + 60 * 60 * 24 * 7,  # 7 days
+                "iat": int(time.time()),
+            }
+            token = jwt.encode(payload, config.JWT_SECRET, algorithm="HS256")
 
-            # Click submit button
-            if self.page.locator('button[type="submit"]').count() > 0:
-                self.page.click('button[type="submit"]')
-                self.page.wait_for_load_state("networkidle")
+            # Extract domain from URL
+            parsed = urlparse(config.CRANKCASE_URL)
+            domain = parsed.netloc
 
-            return {"status": "ok", "url": self.page.url}
+            # Inject session cookie
+            self.page.context.add_cookies([{
+                "name": "session",
+                "value": token,
+                "domain": domain,
+                "path": "/",
+                "httpOnly": True,
+                "secure": parsed.scheme == "https",
+                "sameSite": "Lax",
+            }])
+
+            # Reload to apply the cookie
+            self.page.reload()
+            self.page.wait_for_load_state("networkidle")
+
+            # Verify authentication by checking for user name or logout button
+            html = self.page.content()
+            if config.SESSION_USER_NAME in html or "logout" in html.lower():
+                return {"status": "ok", "url": self.page.url, "user": config.SESSION_USER_NAME}
+            else:
+                return {"status": "error", "message": "Cookie injection succeeded but user not authenticated"}
+
         except Exception as e:
             return {"status": "error", "message": str(e)}
